@@ -20,7 +20,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 # ✅ Google Sheets API Configuration
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-CREDENTIALS_FILE = "amazing-smile-452116-j9-08e7e2d0f6a4.json"  # Ensure this file is present on the new machine
+CREDENTIALS_FILE = "creds.json"  # Ensure this file is present on the new machine
 
 # Authenticate with Google Sheets
 try:
