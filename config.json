@@ -1,0 +1,131 @@
+{
+    "spreadsheets": [
+        {
+            "url": "https://docs.google.com/spreadsheets/d/1o_7SvAeb3tCAhZ75TR88rK0_QtIVAoA9lwL5ALbfCy4/edit?gid=0#gid=0",
+            "tabs": {
+                "Indicatori del Mercato del Lavoro": [
+                    {
+                        "url": "https://it.investing.com/economic-calendar/nonfarm-payrolls-227",
+                        "row": 22,
+                        "column": 2,
+                        "fields": [
+                            "Date",
+                            "Actual",
+                            "Forecast"
+                        ]
+                    },
+                    {
+                        "url": "https://it.investing.com/economic-calendar/unemployment-rate-300",
+                        "row": 57,
+                        "column": 2,
+                        "fields": [
+                            "Date",
+                            "Actual",
+                            "Forecast"
+                        ]
+                    },
+                    {
+                        "url": "https://www.investing.com/economic-calendar/initial-jobless-claims-294",
+                        "row": 102,
+                        "column": 2,
+                        "fields": [
+                            "Date",
+                            "Actual",
+                            "Forecast"
+                        ]
+                    }
+                ],
+                "Indicatori di Prezzi e Inflazione": [
+                    {
+                        "url": "https://www.investing.com/economic-calendar/pce-price-index-906",
+                        "row": 23,
+                        "column": 2,
+                        "fields": [
+                            "Date",
+                            "Actual",
+                            "Forecast"
+                        ]
+                    },
+                    {
+                        "url": "https://www.investing.com/economic-calendar/pce-price-index-904",
+                        "row": 23,
+                        "column": 25,
+                        "fields": [
+                            "Date",
+                            "Actual"
+                        ]
+                    },
+                    {
+                        "url": "https://www.investing.com/economic-calendar/cpi-733",
+                        "row": 60,
+                        "column": 2,
+                        "fields": [
+                            "Date",
+                            "Actual",
+                            "Forecast"
+                        ]
+                    },
+                    {
+                        "url": "https://uk.investing.com/economic-calendar/cpi-69",
+                        "row": 60,
+                        "column": 25,
+                        "fields": [
+                            "Date",
+                            "Actual"
+                        ]
+                    },
+                    {
+                        "url": "https://www.investing.com/economic-calendar/core-cpi-736",
+                        "row": 96,
+                        "column": 2,
+                        "fields": [
+                            "Date",
+                            "Actual",
+                            "Forecast"
+                        ]
+                    },
+                    {
+                        "url": "https://www.investing.com/economic-calendar/core-cpi-56",
+                        "row": 96,
+                        "column": 25,
+                        "fields": [
+                            "Date",
+                            "Actual"
+                        ]
+                    },
+                    {
+                        "url": "https://www.investing.com/economic-calendar/ppi-734",
+                        "row": 132,
+                        "column": 2,
+                        "fields": [
+                            "Date",
+                            "Actual",
+                            "Forecast"
+                        ]
+                    },
+                    {
+                        "url": "https://www.investing.com/economic-calendar/ppi-238",
+                        "row": 132,
+                        "column": 25,
+                        "fields": [
+                            "Date",
+                            "Actual"
+                        ]
+                    }
+                ],
+                "Indicatori di Sentiment e Attivit\u00e0 Economica": [
+                    {
+                        "url": "https://www.investing.com/economic-calendar/cb-consumer-confidence-48/",
+                        "row": 23,
+                        "column": 2,
+                        "fields": [
+                            "Date",
+                            "Actual",
+                            "Forecast"
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}
