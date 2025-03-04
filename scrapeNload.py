@@ -42,6 +42,13 @@ except Exception as e:
     print(f"❌ Error: Could not read config.json - {e}")
     sys.exit(1)
 
+#Configure Chrome options
+options = Options()
+#options.add_argument("--headless") # for old browser
+#options.add_argument("--headless=new") # for new browser
+#options.add_argument("--window-size=1920,1200")
+driver = webdriver.Chrome(options=options)
+
 # ✅ Function to format and map data
 def format_row(row):
     # Extract relevant fields dynamically (handles variations in table structure)
@@ -95,19 +102,43 @@ def normalize_sheet_value(value):
 MAX_RETRIES = 3  # ✅ Number of times to retry before giving up
 RETRY_DELAY = 5  # ✅ Seconds to wait before retrying
 
+def restart_webdriver():
+    """ ✅ Restarts WebDriver properly """
+    global driver
+    print("🔄 Restarting WebDriver...")
+    try:
+        driver.quit()
+    except:
+        pass  # Ignore errors if driver is already closed
+    time.sleep(3)
+    driver = webdriver.Chrome(options=options)
+    print("✅ WebDriver restarted successfully!")
+
 def open_url_with_retries(driver, url):
     """
-    Tries to open the given URL multiple times if it fails due to timeout or connection issues.
-    Uses threading.Timer() to enforce a hard timeout.
+    ✅ Tries to open a URL multiple times with WebDriver restarts if needed.
+    ✅ Ensures the page has loaded, the URL has changed, and JavaScript is fully rendered.
     """
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             print(f"🌍 Attempt {attempt} - Opening URL: {url}")
 
+            # ✅ Get current URL before navigating
+            old_url = driver.current_url
+
+            # ✅ Navigate to new URL
             driver.get(url)
 
-            # ✅ Wait for page to load completely
+            # ✅ Wait until the URL changes
+            WebDriverWait(driver, 10).until(EC.url_changes(old_url))
+
+            # ✅ Wait until JavaScript fully renders the page
+            WebDriverWait(driver, 10).until(
+                lambda d: d.execute_script('return document.readyState') == 'complete'
+            )
+
+            # ✅ Ensure a key element is loaded (adjust as needed)
             WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.TAG_NAME, "table"))
             )
@@ -116,16 +147,6 @@ def open_url_with_retries(driver, url):
             return True  # ✅ Success, exit function
 
         except (TimeoutException, WebDriverException) as e:
-            print(f"⏳ Timeout exceeded! Restarting WebDriver...")
-
-            try:
-                driver.quit()
-            except Exception as e:
-                print(f"⚠️ WebDriver quit failed: {e}")
-
-            time.sleep(3)  # Allow cleanup time
-            driver = webdriver.Chrome(options=options)  # Restart WebDriver
-
             print(f"⚠️ Error loading page (Attempt {attempt}/{MAX_RETRIES}): {e}")
 
             if attempt < MAX_RETRIES:
@@ -134,12 +155,7 @@ def open_url_with_retries(driver, url):
                 time.sleep(wait_time)
             else:
                 print("❌ Max retries reached. Restarting WebDriver...")
-
-                # ✅ Restart WebDriver
-                driver.quit()
-                time.sleep(3)  # Allow cleanup time
-                driver = webdriver.Chrome(options=options)
-
+                restart_webdriver()
                 return False  # ❌ Skip this URL
 
     return False  # ❌ If all retries fail, return False
@@ -190,13 +206,6 @@ def compare_dates(new_date, sheet_date):
     except Exception as e:
         print(f"⚠️ Error comparing dates: {e}")
         return -1  # Default to not increment if comparison fails
-
-#Configure Chrome options
-options = Options()
-#options.add_argument("--headless") # for old browser
-#options.add_argument("--headless=new") # for new browser
-#options.add_argument("--window-size=1920,1200")
-driver = webdriver.Chrome(options=options)
 
 # Logic Starts Here
 
