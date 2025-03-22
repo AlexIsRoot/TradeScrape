@@ -5,15 +5,12 @@ import time
 import random
 import gspread  # Google Sheets API
 import openpyxl
-import threading
 from dateutil import parser
 from datetime import datetime
 from oauth2client.service_account import ServiceAccountCredentials
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.support import expected_conditions as EC
 
 # Configuration Starts here
@@ -32,7 +29,7 @@ except Exception as e:
     sys.exit(1)
 
 # ✅ Load JSON Configuration
-CONFIG_FILE = "config.json"
+CONFIG_FILE = "config.json" # Ensure this file is present in the same directory of the script
 
 try:
     with open(CONFIG_FILE, "r", encoding="utf-8") as file:
@@ -44,10 +41,6 @@ except Exception as e:
 
 #Configure Chrome options
 options = Options()
-#options.add_argument("--headless") # for old browser
-#options.add_argument("--headless=new") # for new browser
-#options.add_argument("--window-size=1920,1200")
-driver = webdriver.Chrome(options=options)
 
 # ✅ Function to format and map data
 def format_row(row):
@@ -99,67 +92,6 @@ def normalize_sheet_value(value):
     """
     return value.replace(".", "") if "." in value else value
 
-MAX_RETRIES = 3  # ✅ Number of times to retry before giving up
-RETRY_DELAY = 5  # ✅ Seconds to wait before retrying
-
-def restart_webdriver():
-    """ ✅ Restarts WebDriver properly """
-    global driver
-    print("🔄 Restarting WebDriver...")
-    try:
-        driver.quit()
-    except:
-        pass  # Ignore errors if driver is already closed
-    time.sleep(3)
-    driver = webdriver.Chrome(options=options)
-    print("✅ WebDriver restarted successfully!")
-
-def open_url_with_retries(driver, url):
-    """
-    ✅ Tries to open a URL multiple times with WebDriver restarts if needed.
-    ✅ Ensures the page has loaded, the URL has changed, and JavaScript is fully rendered.
-    """
-
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            print(f"🌍 Attempt {attempt} - Opening URL: {url}")
-
-            # ✅ Get current URL before navigating
-            old_url = driver.current_url
-
-            # ✅ Navigate to new URL
-            driver.get(url)
-
-            # ✅ Wait until the URL changes
-            WebDriverWait(driver, 10).until(EC.url_changes(old_url))
-
-            # ✅ Wait until JavaScript fully renders the page
-            WebDriverWait(driver, 10).until(
-                lambda d: d.execute_script('return document.readyState') == 'complete'
-            )
-
-            # ✅ Ensure a key element is loaded (adjust as needed)
-            WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.TAG_NAME, "table"))
-            )
-
-            print("✅ Page loaded successfully!")
-            return True  # ✅ Success, exit function
-
-        except (TimeoutException, WebDriverException) as e:
-            print(f"⚠️ Error loading page (Attempt {attempt}/{MAX_RETRIES}): {e}")
-
-            if attempt < MAX_RETRIES:
-                wait_time = RETRY_DELAY + random.uniform(1, 3)
-                print(f"🔄 Retrying in {wait_time:.1f} seconds...")
-                time.sleep(wait_time)
-            else:
-                print("❌ Max retries reached. Restarting WebDriver...")
-                restart_webdriver()
-                return False  # ❌ Skip this URL
-
-    return False  # ❌ If all retries fail, return False
-
 def is_row_complete(row):
     """ ✅ Checks if all fields in a row are non-empty (i.e., data is complete). """
     return all(field.strip() != "" for field in row)
@@ -196,6 +128,8 @@ def compare_dates(new_date, sheet_date):
     try:
         new_dt = datetime.strptime(new_date, "%d/%m/%Y")
         sheet_dt = datetime.strptime(sheet_date, "%d/%m/%Y")
+
+        print(new_dt, sheet_dt)
 
         if new_dt > sheet_dt:
             return 1  # ✅ Newer date → Move to next row
@@ -238,110 +172,123 @@ for sheet_config in config["spreadsheets"]:
             start_col = task["column"]
             fields = task["fields"]
 
-            if not open_url_with_retries(driver, url):
-                continue  # Skip this URL if it fails after retries
-            print(f"  🔹 Scraping: {url} (Row: {start_row}, Column: {start_col})")
-
             try:
-                # Click on "Cerca" button
-                table = driver.find_element(By.TAG_NAME, "table")
-                thead = table.find_element(By.TAG_NAME, "thead")
-                headers = [th.text.strip() for th in thead.find_elements(By.TAG_NAME, "th")]
-                tbody = table.find_element(By.TAG_NAME, "tbody")
-                rows = tbody.find_elements(By.TAG_NAME, "tr")
-                table_data = []
+                with webdriver.Chrome(options=options) as driver:
+                    driver.get(url)
+                    time.sleep(2) # Time to let the page load properly
+                    print(f"\n🔹 Scraping: {url} (Row: {start_row}, Column: {start_col})")
 
-                # ✅ Fetch only the first two rows
-                for row in rows[:2]:
-                    cols = row.find_elements(By.TAG_NAME, "td")
-                    row_data = [col.text.strip() for col in cols]  # Clean the text
-                    if row_data:
-                        table_data.append(row_data)
+                    try:
+                        # Click on "Cerca" button
+                        table = driver.find_element(By.TAG_NAME, "table")
+                        thead = table.find_element(By.TAG_NAME, "thead")
+                        headers = [th.text.strip() for th in thead.find_elements(By.TAG_NAME, "th")]
+                        tbody = table.find_element(By.TAG_NAME, "tbody")
+                        rows = tbody.find_elements(By.TAG_NAME, "tr")
+                        table_data = []
 
-                # Ensure at least 2 rows were extracted
-                if len(table_data) < 2 or any(len(row) == 0 for row in table_data):
-                    print("❌ Not enough valid rows found in the table. Exiting.")
-                    sys.exit(1)
+                        # ✅ Fetch only the first two rows
+                        for row in rows[:2]:
+                            cols = row.find_elements(By.TAG_NAME, "td")
+                            row_data = [col.text.strip() for col in cols]  # Clean the text
+                            if row_data:
+                                table_data.append(row_data)
 
-                # ✅ Apply formatting to table_data
-                table_data = list(map(format_row, table_data))
+                        # Ensure at least 2 rows were extracted
+                        if len(table_data) < 2 or any(len(row) == 0 for row in table_data):
+                            print("❌ Not enough valid rows found in the table. Exiting.")
+                            sys.exit(1)
 
-                # ✅ Get existing Google Sheet data
-                existing_data = sheet.get_all_values()
-                last_sheet_row = len(existing_data)  # Last row index in Google Sheets (1-based)
+                        # ✅ Apply formatting to table_data
+                        table_data = list(map(format_row, table_data))
 
-                # ✅ Extract the first scraped row (most recent)
-                first_scraped_row = table_data[0]
+                        # ✅ Get existing Google Sheet data
+                        existing_data = sheet.get_all_values()
+                        last_sheet_row = len(existing_data)  # Last row index in Google Sheets (1-based)
 
-                if fields == ["Date", "Actual"]:
-                    first_scraped_row = [first_scraped_row[0], first_scraped_row[1]]
-                    # ✅ Read the current data in the specified row to check if an update is needed
-                    existing_first_row_data = existing_data[start_row-1][start_col-1:start_col] if len(existing_data) >= start_row else ["", ""]
-                else:
-                    # ✅ Read the current data in the specified row to check if an update is needed
-                    existing_first_row_data = existing_data[start_row - 1][start_col - 1:4] if len(
-                        existing_data) >= start_row else ["", "", ""]
+                        # ✅ Extract the first scraped row (most recent)
+                        first_scraped_row = table_data[0]
 
-                existing_first_row_data = [normalize_sheet_value(val) for val in existing_first_row_data]
+                        if fields == ["Date", "Actual"]:
+                            first_scraped_row = [first_scraped_row[0], first_scraped_row[1]]
+                            # ✅ Read the current data in the specified row to check if an update is needed
+                            existing_first_row_data = existing_data[start_row - 1][start_col - 1:start_col] if len(
+                                existing_data) >= start_row else ["", ""]
+                            print(first_scraped_row, existing_first_row_data)
+                        else:
+                            # ✅ Read the current data in the specified row to check if an update is needed
+                            existing_first_row_data = existing_data[start_row - 1][start_col - 1:4] if len(
+                                existing_data) >= start_row else ["", "", ""]
+                            print(first_scraped_row, existing_first_row_data)
 
-                # ✅ Compare new date with existing date in the sheet
-                date_comparison = compare_dates(first_scraped_row[0], existing_first_row_data[0])
+                        existing_first_row_data = [normalize_sheet_value(val) for val in existing_first_row_data]
 
-                # ✅ Case 1: Newer date → Update `config.json` first, then write data
-                if date_comparison == 1:
-                    print(f"🔄 Newer data detected. Updating config.json first.")
+                        # ✅ Compare new date with existing date in the sheet
+                        date_comparison = compare_dates(first_scraped_row[0], existing_first_row_data[0])
 
-                    # ✅ Update `config.json` row pointer **before** writing to the sheet
-                    new_row = start_row + 1
-                    update_config_file(config, CONFIG_FILE, spreadsheet_url, tab_name, url, new_row)
-                    print(f"✅ Row updated in config.json: Next scrape will start from row {new_row}")
+                        # ✅ Case 1: Newer date → Update `config.json` first, then write data
+                        if date_comparison == 1:
+                            print(f"🔄 Newer data detected. Updating config.json first.")
 
-                    # ✅ Now write the new data to the sheet
-                    for col_index, cell_value in enumerate(first_scraped_row):
-                        sheet.update_cell(start_row, start_col + col_index, cell_value)
-                    print(f"✅ First fetched row ({first_scraped_row[0]}) inserted at row {start_row}.")
+                            # ✅ Update `config.json` row pointer **before** writing to the sheet
+                            new_row = start_row + 1
+                            update_config_file(config, CONFIG_FILE, spreadsheet_url, tab_name, url, new_row)
+                            print(f"✅ Row updated in config.json: Next scrape will start from row {new_row}")
 
-                # ✅ Case 2: Same date → Check if values differ, update if necessary (but don't increment row)
-                elif date_comparison == 0:
-                    print(f"🔄 Same date detected. Checking if update is needed...")
+                            # ✅ Now write the new data to the sheet
+                            for col_index, cell_value in enumerate(first_scraped_row):
+                                sheet.update_cell(start_row, start_col + col_index, cell_value)
+                            print(f"✅ First fetched row ({first_scraped_row[0]}) inserted at row {start_row}.")
 
-                    if first_scraped_row != existing_first_row_data:
-                        for col_index, cell_value in enumerate(first_scraped_row):
-                            sheet.update_cell(start_row, start_col + col_index, cell_value)
-                        print(f"✅ Data updated at row {start_row} (without moving row pointer).")
-                    else:
-                        print(f"🚫 No changes needed: Data is identical at row {start_row}.")
+                        # ✅ Case 2: Same date → Check if values differ, update if necessary (but don't increment row)
+                        elif date_comparison == 0:
+                            print(f"🔄 Same date detected. Checking if update is needed...")
 
-                # ✅ Case 3: Fetched date is somehow older (should not happen)
-                else:
-                    print(
-                        f"⚠️ Warning: Fetched date is earlier than existing date. Skipping update.")
+                            if first_scraped_row != existing_first_row_data:
+                                for col_index, cell_value in enumerate(first_scraped_row):
+                                    sheet.update_cell(start_row, start_col + col_index, cell_value)
+                                print(f"✅ Data updated at row {start_row} (without moving row pointer).")
+                            else:
+                                print(f"🚫 No changes needed: Data is identical at row {start_row}.")
 
-                # ✅ Extract and compare the second formatted row
-                second_scraped_row = table_data[1][:3]
-                prev_row_index = start_row - 1
+                        # ✅ Case 3: Fetched date is somehow older (should not happen)
+                        else:
+                            print(
+                                f"⚠️ Warning: Fetched date is earlier than existing date. Skipping update.")
 
-                # ✅ Read the row before the specified row for comparison
-                existing_prev_row_data = existing_data[prev_row_index - 1][start_col-1:4] if len(existing_data) >= prev_row_index else ["", "",
-                                                                                                                             ""]
-                existing_prev_row_data = [normalize_sheet_value(val) for val in existing_prev_row_data]
-                # ✅ Overwrite the previous row **only if there are changes**
-                if second_scraped_row != existing_prev_row_data:
-                    for col_index, cell_value in enumerate(second_scraped_row):
-                        sheet.update_cell(prev_row_index, start_col + col_index, cell_value)
-                    print(f"✅ Overwritten previous row {prev_row_index} with new data ({second_scraped_row[0]}).")
-                else:
-                    print(f"🚫 No changes needed for previous row {prev_row_index}, data already matches.")
+                        prev_row_index = start_row - 1
 
-                ''' OPTIONAL: call -> func @ Local Excel file loading '''
+                        if fields == ["Date", "Actual"]:
+                            second_scraped_row = [table_data[1][0], table_data[1][1]]
+                            # ✅ Read the current data in the specified row to check if an update is needed
+                            existing_prev_row_data = existing_data[prev_row_index - 1][start_col - 1:start_col] if len(
+                                existing_data) >= prev_row_index else ["", ""]
+                        else:
+                            second_scraped_row = table_data[1][:3]
+                            existing_prev_row_data = existing_data[prev_row_index - 1][start_col - 1:4] if len(
+                                existing_data) >= prev_row_index else ["", "",
+                                                                       ""]
+                        existing_prev_row_data = [normalize_sheet_value(val) for val in existing_prev_row_data]
+                        # ✅ Overwrite the previous row **only if there are changes**
+                        if second_scraped_row != existing_prev_row_data:
+                            for col_index, cell_value in enumerate(second_scraped_row):
+                                sheet.update_cell(prev_row_index, start_col + col_index, cell_value)
+                            print(
+                                f"✅ Overwritten previous row {prev_row_index} with new data ({second_scraped_row[0]}).")
+                        else:
+                            print(f"🚫 No changes needed for previous row {prev_row_index}, data already matches.")
+
+                        ''' OPTIONAL: call -> func @ Local Excel file loading '''
+                    except Exception as error:
+                        print(error)
+                        print("Error! Skipping...")
+                        continue
             except Exception as error:
-                print(error)
-                print("Error! Terminating execution.")
-                driver.quit()
-                sys.exit(1)
+                print("Somethign went wrong opening " + url + ", skipping...")
+                continue
+
     print("\nDone. Moving to the next sheet...")
 
-driver.quit()
 print("\n🔻 Scraping process completed.")
 
 ''' func @ Local Excel file loading 
