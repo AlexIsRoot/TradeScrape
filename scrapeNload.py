@@ -225,19 +225,22 @@ for sheet_config in config["spreadsheets"]:
 
                         # ✅ Compare new date with existing date in the sheet
                         date_comparison = compare_dates(first_scraped_row[0], existing_first_row_data[0])
-
+                        prev_row_index = start_row - 1
+                        
                         # ✅ Case 1: Newer date → Update `config.json` first, then write data
                         if date_comparison == 1:
                             print(f"🔄 Newer data detected. Updating config.json first.")
 
                             # ✅ Update `config.json` row pointer **before** writing to the sheet
                             new_row = start_row + 1
+                            prev_row_index += 1
+                            
                             update_config_file(config, CONFIG_FILE, spreadsheet_url, tab_name, url, new_row)
                             print(f"✅ Row updated in config.json: Next scrape will start from row {new_row}")
 
                             # ✅ Now write the new data to the sheet
                             for col_index, cell_value in enumerate(first_scraped_row):
-                                sheet.update_cell(start_row, start_col + col_index, cell_value)
+                                sheet.update_cell(new_row, start_col + col_index, cell_value)
                             print(f"✅ First fetched row ({first_scraped_row[0]}) inserted at row {start_row}.")
 
                         # ✅ Case 2: Same date → Check if values differ, update if necessary (but don't increment row)
@@ -255,8 +258,6 @@ for sheet_config in config["spreadsheets"]:
                         else:
                             print(
                                 f"⚠️ Warning: Fetched date is earlier than existing date. Skipping update.")
-
-                        prev_row_index = start_row - 1
 
                         if fields == ["Date", "Actual"]:
                             second_scraped_row = [table_data[1][0], table_data[1][1]]
